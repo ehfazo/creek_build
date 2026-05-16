@@ -28,6 +28,14 @@ if ! command -v jq &> /dev/null; then
     export PATH=$HOME/bin:$PATH
 fi
 
+# ================= REPO =================
+if ! command -v repo &> /dev/null; then
+    mkdir -p ~/bin
+    curl -s https://storage.googleapis.com/git-repo-downloads/repo -o ~/bin/repo
+    chmod +x ~/bin/repo
+    export PATH=$HOME/bin:$PATH
+fi
+
 # ================= CONFIGS =================
 if [ -f "./build_config.sh" ]; then
     source build_config.sh
