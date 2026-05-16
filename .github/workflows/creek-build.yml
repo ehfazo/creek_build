@@ -26,6 +26,7 @@ jobs:
       - name: Run build
         shell: bash
         run: |
+          echo "$HOME/bin" >> "$GITHUB_PATH"
           bash ./scripts/gha_preflight.sh
           chmod +x ./crave_run.sh
           ./crave_run.sh
