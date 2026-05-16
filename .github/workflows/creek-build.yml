@@ -26,5 +26,6 @@ jobs:
       - name: Run build
         shell: bash
         run: |
+          bash ./scripts/gha_preflight.sh
           chmod +x ./crave_run.sh
           ./crave_run.sh

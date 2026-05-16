@@ -56,6 +56,10 @@ This repo includes a self-hosted GitHub Actions workflow that runs the same buil
 - Preinstalled tools: `git`, `git-lfs`, `curl`, `repo`, Java/Android build deps, and Android build environment
 - Sufficient disk space for Android source and build output
 
+Recommended for Ubuntu 24.04
+- OpenJDK 17: `sudo apt-get install -y openjdk-17-jdk`
+- Repo tool: `curl -s https://storage.googleapis.com/git-repo-downloads/repo -o ~/bin/repo && chmod +x ~/bin/repo`
+
 ### 2. Required GitHub secrets
 Add these in your GitHub repository settings:
 
