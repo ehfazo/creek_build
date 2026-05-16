@@ -75,6 +75,14 @@ Add these in your GitHub repository settings:
 ### 3. Trigger the workflow
 Go to the Actions tab and run **Creek Build (Self-Hosted)** manually.
 
+### 4. Device Tree Branch & Auto-patching
+The workflow clones `android_device_xiaomi_creek.git` from the `minimal-boot` branch (Android 15 variant for lineage-23.2). After cloning, the build script auto-patches:
+
+- **[BoardConfig.mk](../BoardConfig.mk):** Fixes unassigned `BOARD_RECOVERY_HEADER_VERSION` (missing `:= 4`)
+- **rootdir/Android.bp:** Removes duplicate `init.kernel.post_boot-bengal-iot.sh` module definition
+
+This happens automatically — no manual intervention needed.
+
 ---
 
 ## Script Map
