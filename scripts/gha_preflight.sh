@@ -3,6 +3,7 @@
 set -euo pipefail
 
 missing=()
+repo_install_failed=""
 
 for cmd in curl git git-lfs make; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -11,7 +12,17 @@ for cmd in curl git git-lfs make; do
 done
 
 if ! command -v repo >/dev/null 2>&1; then
-  missing+=("repo (install from https://storage.googleapis.com/git-repo-downloads/repo)")
+  mkdir -p "$HOME/bin"
+  if curl -s https://storage.googleapis.com/git-repo-downloads/repo -o "$HOME/bin/repo"; then
+    chmod +x "$HOME/bin/repo"
+    export PATH="$HOME/bin:$PATH"
+  else
+    repo_install_failed="repo (auto install failed: https://storage.googleapis.com/git-repo-downloads/repo)"
+  fi
+fi
+
+if ! command -v repo >/dev/null 2>&1; then
+  missing+=("${repo_install_failed:-repo (install from https://storage.googleapis.com/git-repo-downloads/repo)}")
 fi
 
 if ! command -v java >/dev/null 2>&1; then
