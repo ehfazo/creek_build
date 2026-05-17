@@ -9,7 +9,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Dependencies (Ubuntu 24.04)
+      - name: Install Dependencies (Ubuntu 24.04 Pro)
         shell: bash
         run: |
           echo "Updating package lists..."

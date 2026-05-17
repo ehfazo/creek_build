@@ -17,7 +17,7 @@ set +o allexport
 # ================= TIMEZONE =================
 echo "🕒 Switching system timezone to Gulf Standard Time"
 sudo rm -f /etc/localtime
-sudo ln -s /usr/share/zoneinfo/Asia/Dubai /etc/localtime
+sudo ln -s /usr/share/zoneinfo/UTC /etc/localtime
 echo "🕒 Current system time: $(date)"
 
 # ================= JQ =================
@@ -40,7 +40,7 @@ fi
 if [ -f "./build_config.sh" ]; then
     source build_config.sh
 else
-    curl -sf https://raw.githubusercontent.com/nuruszama/crave_build_script/main/build_config.sh -o build_config.sh
+    curl -sf https://raw.githubusercontent.com/ehfazo/creek_build/main/build_config.sh -o build_config.sh
     source build_config.sh
 fi
 
@@ -178,40 +178,10 @@ git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.gi
 
 echo ">>>> [STEP] Clone device trees"
 git clone https://github.com/ehfazo/android_device_xiaomi_creek.git -b minimal-boot device/xiaomi/creek
-git clone https://github.com/nuruszama/android_device_creek_sm6225-common.git -b main device/creek/sm6225-common
-git clone https://github.com/nuruszama/android_vendor_xiaomi_creek.git -b minimal-boot vendor/xiaomi/creek
+git clone https://github.com/ehfazo/android_device_creek_sm6225-common.git -b main device/creek/sm6225-common
+git clone https://github.com/ehfazo/android_vendor_xiaomi_creek.git -b minimal-boot vendor/xiaomi/creek
 
 echo ">>>> [STEP] Auto-patch device tree"
-
-# Fix BoardConfig.mk: unassigned BOARD_RECOVERY_HEADER_VERSION (missing := 4)
-if grep -qx 'BOARD_RECOVERY_HEADER_VERSION' device/xiaomi/creek/BoardConfig.mk 2>/dev/null; then
-    sed -i 's/^BOARD_RECOVERY_HEADER_VERSION$/BOARD_RECOVERY_HEADER_VERSION := 4/' device/xiaomi/creek/BoardConfig.mk
-    echo "    Fixed: device/xiaomi/creek/BoardConfig.mk (BOARD_RECOVERY_HEADER_VERSION)"
-fi
-
-# Fix rootdir/Android.bp: remove duplicate init.kernel.post_boot-bengal-iot.sh module
-python3 -c "
-import sys
-path = 'device/xiaomi/creek/rootdir/Android.bp'
-with open(path) as f:
-    content = f.read()
-
-block = '''sh_binary {
-    name: \"init.kernel.post_boot-bengal-iot.sh\",
-    src: \"bin/init.kernel.post_boot-bengal-iot.sh\",
-    vendor: true,
-}'''
-
-count = content.count(block)
-if count > 1:
-    idx = content.rfind(block)
-    content = content[:idx] + content[idx+len(block):]
-    with open(path, 'w') as f:
-        f.write(content)
-    print('    Fixed: rootdir/Android.bp (removed duplicate init.kernel.post_boot-bengal-iot.sh)')
-else:
-    print('    No duplicate found in rootdir/Android.bp')
-"
 
 # Clone hardware/xiaomi for the soong_namespace import in device tree Android.bp
 if [ ! -d "hardware/xiaomi" ]; then
