@@ -177,7 +177,7 @@ rm -rf hardware/qcom-caf/common
 git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
 
 echo ">>>> [STEP] Clone device trees"
-git clone https://github.com/nuruszama/android_device_xiaomi_creek.git -b minimal-boot device/xiaomi/creek
+git clone https://github.com/ehfazo/android_device_xiaomi_creek.git -b main device/xiaomi/creek
 git clone https://github.com/nuruszama/android_device_creek_sm6225-common.git -b main device/creek/sm6225-common
 git clone https://github.com/nuruszama/android_vendor_xiaomi_creek.git -b minimal-boot vendor/xiaomi/creek
 
@@ -213,17 +213,7 @@ else:
     print('    No duplicate found in rootdir/Android.bp')
 "
 
-# Clone hardware/xiaomi for the soong_namespace import in device tree Android.bp
-if [ ! -d "hardware/xiaomi" ]; then
-    echo "    Cloning: hardware/xiaomi"
-    git clone https://github.com/LineageOS/android_hardware_xiaomi.git -b lineage-23.2 hardware/xiaomi
-fi
-
-# Create missing config directories referenced by device.mk
-mkdir -p device/xiaomi/creek/configs/idc
-mkdir -p device/xiaomi/creek/configs/keylayout
-mkdir -p device/xiaomi/creek/configs/media
-echo "    Created: missing config dirs (idc, keylayout, media)"
+echo "    Auto-patch complete"
 
 SYNC_END=$(date +%s)
 SYNC_DIFF=$((SYNC_END - SYNC_START))
