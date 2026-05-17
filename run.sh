@@ -10,9 +10,9 @@ if [ ! -f ".env" ]; then
 fi
 
 # Load your local secrets
-set -o allexport
+set -a
 source .env
-set +o allexport
+set +a
 
 # ================= CONFIGS =================
 if [ -f "./build_config.sh" ]; then
