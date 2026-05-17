@@ -34,6 +34,17 @@ jobs:
           GITHUB="${{ secrets.GITHUB }}"
           EOF
 
+      - name: Configure Git Authentication
+        shell: bash
+        run: |
+          echo "Configuring Git to use GitHub token for HTTPS clones..."
+          # This tells git to transparently use the token for all github.com HTTPS requests
+          git config --global url."https://${{ secrets.GITHUB }}@github.com/".insteadOf "https://github.com/"
+      
+          # 'repo' tool requires a git identity to be set globally
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Run build
         shell: bash
         run: |
@@ -41,3 +52,11 @@ jobs:
           bash ./scripts/gha_preflight.sh
           chmod +x ./crave_run.sh
           ./crave_run.sh
+
+      - name: Cleanup Git Authentication
+        if: always()
+        shell: bash
+        run: |
+          echo "Cleaning up Git credentials from self-hosted runner..."
+          git config --global --unset url."https://${{ secrets.GITHUB }}@github.com/".insteadOf || true
+
