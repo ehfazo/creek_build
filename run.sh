@@ -71,6 +71,15 @@ for folder in "${remove[@]}"; do
     echo "    Cleaned: $folder"
 done
 
+echo ">>>> [STEP] Installing repo tool"
+mkdir -p ~/bin
+curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+chmod a+x ~/bin/repo
+export PATH=~/bin:$PATH
+
+echo ">>>> [STEP] Repo Init"
+repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
+
 echo ">>>> [STEP] Repo Init"
 repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
 
