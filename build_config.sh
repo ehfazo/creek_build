@@ -7,9 +7,9 @@ ANDROID_VERSION="v16 QPR2"
 PROJECT_VERSION="LOS 23.2"
 
 # ================= TIMEZONE =================
-echo "🕒 Switching system timezone to Gulf Standard Time"
+echo "🕒 Switching system timezone to UTC"
 sudo rm -f /etc/localtime
-sudo ln -s /usr/share/zoneinfo/Asia/Dubai /etc/localtime
+sudo ln -s /usr/share/zoneinfo/UTC /etc/localtime
 echo "🕒 Current system time: $(date)"
 
 # ================= JQ =================
