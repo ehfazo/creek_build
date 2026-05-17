@@ -50,8 +50,8 @@ jobs:
         run: |
           echo "$HOME/bin" >> "$GITHUB_PATH"
           bash ./scripts/gha_preflight.sh
-          chmod +x ./crave_run.sh
-          ./crave_run.sh
+          chmod +x ./run.sh
+          ./run.sh
 
       - name: Cleanup Git Authentication
         if: always()
