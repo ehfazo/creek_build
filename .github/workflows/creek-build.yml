@@ -1,7 +1,5 @@
 name: Creek Build (Self-Hosted)
-
-on:
-  workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
   build:
@@ -10,6 +8,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Dependencies (Ubuntu 24.04)
+        shell: bash
+        run: |
+          echo "Updating package lists..."
+          sudo apt-get update
+          
+          echo "Installing required dependencies..."
+          # Installing git-lfs, make, and OpenJDK 17 (JDK is recommended over JRE for build environments)
+          sudo apt-get install -y git-lfs make openjdk-17-jdk
+          
+          echo "Initializing git-lfs..."
+          git lfs install
 
       - name: Prepare env file
         shell: bash
