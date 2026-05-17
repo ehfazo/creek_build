@@ -14,28 +14,6 @@ set -o allexport
 source .env
 set +o allexport
 
-# ================= TIMEZONE =================
-echo "🕒 Switching system timezone to Gulf Standard Time"
-sudo rm -f /etc/localtime
-sudo ln -s /usr/share/zoneinfo/UTC /etc/localtime
-echo "🕒 Current system time: $(date)"
-
-# ================= JQ =================
-if ! command -v jq &> /dev/null; then
-    mkdir -p ~/bin
-    curl -L -o ~/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7/jq-linux64
-    chmod +x ~/bin/jq
-    export PATH=$HOME/bin:$PATH
-fi
-
-# ================= REPO =================
-if ! command -v repo &> /dev/null; then
-    mkdir -p ~/bin
-    curl -s https://storage.googleapis.com/git-repo-downloads/repo -o ~/bin/repo
-    chmod +x ~/bin/repo
-    export PATH=$HOME/bin:$PATH
-fi
-
 # ================= CONFIGS =================
 if [ -f "./build_config.sh" ]; then
     source build_config.sh
@@ -162,33 +140,14 @@ echo ">>>> [STEP] Repo Init"
 repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
 
 echo ">>>> [STEP] Local Manifests"
-git clone https://github.com/nuruszama/local_manifest.git -b main .repo/local_manifests
+git clone https://github.com/nuruszama/crave_build_scripts.git -b lineage-23.2 .repo/local_manifests
 
 echo ">>>> [STEP] Repo Sync"
 SYNC_START=$(date +%s)
-
-if [ -f /opt/crave/resync.sh ]; then
-    /opt/crave/resync.sh
-else
-    repo sync -c --force-sync --no-tags --no-clone-bundle -j$(nproc --all)
-fi
+repo sync -c --force-sync --no-tags --no-clone-bundle -j$(nproc --all)
 
 rm -rf hardware/qcom-caf/common
 git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
-
-echo ">>>> [STEP] Clone device trees"
-git clone https://github.com/ehfazo/android_device_xiaomi_creek.git -b minimal-boot device/xiaomi/creek
-git clone https://github.com/ehfazo/android_device_creek_sm6225-common.git -b main device/creek/sm6225-common
-git clone https://github.com/ehfazo/android_vendor_xiaomi_creek.git -b minimal-boot vendor/xiaomi/creek
-
-echo ">>>> [STEP] Auto-patch device tree"
-
-# Clone hardware/xiaomi for the soong_namespace import in device tree Android.bp
-if [ ! -d "hardware/xiaomi" ]; then
-    echo "    Cloning: hardware/xiaomi"
-    git clone https://github.com/LineageOS/android_hardware_xiaomi.git -b lineage-23.2 hardware/xiaomi
-fi
-echo "    Auto-patch complete"
 
 SYNC_END=$(date +%s)
 SYNC_DIFF=$((SYNC_END - SYNC_START))
@@ -203,7 +162,6 @@ echo ">>>> [STEP] Set up build environment"
 source build/envsetup.sh
 
 echo ">>>> [STEP] Lunch"
-export TARGET_RELEASE="${RELEASE}"
 lunch ${ROM_NAME}_${DEVICE}-${RELEASE}-${BUILD_TYPE}
 export BUILD_USERNAME=nuruszama
 export BUILD_HOSTNAME=arch
