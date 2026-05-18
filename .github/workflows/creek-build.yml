@@ -193,15 +193,11 @@ jobs:
           rm -rf hardware/qcom-caf/common
           git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
 
-      - name: Setup environment variables
+      - name : Lunch device
         shell: bash
         run: |
           echo "Setting up environment variables..."
           source build/envsetup.sh
-
-      - name : Lunch device
-        shell: bash
-        run: |
           lunch ${ROM_NAME}_${DEVICE}-${RELEASE}-${BUILD_TYPE}
           export BUILD_USERNAME=ehfazo
           export BUILD_HOSTNAME=arch
