@@ -5,35 +5,45 @@ jobs:
   build:
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 1440
+    # Apply strict mode to EVERY run step by default
+    defaults:
+      run:
+        shell: bash --noprofile --norc -euo pipefail {0}
+    
+    # Map your secrets as environment variables for the whole job
+    # This is much safer than writing them to a .env file on a persistent VPS
+    env:
+      TG_TOKEN: ${{ secrets.TG_TOKEN }}
+      TG_CHAT: ${{ secrets.TG_CHAT }}
+      TG_TOPIC: ${{ secrets.TG_TOPIC }}
+      UPLOAD: ${{ secrets.UPLOAD }}
+      PIXELDRAIN: ${{ secrets.PIXELDRAIN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Env file
-        shell: bash
+      - name: Setup Environment Variables
         run: |
           mkdir -p ~/cache
-          if [ -f "./build_config.sh" ]; then
-              source build_config.sh
-          else
+          
+          # Download config if missing
+          if [ ! -f "./build_config.sh" ]; then
               curl -sf https://raw.githubusercontent.com/ehfazo/creek_build/main/config/build_config.sh -o build_config.sh
-              source build_config.sh
           fi
+          
+          # Source it, then export all variables to GITHUB_ENV so future steps can use them
+          source build_config.sh
+          env | grep -E "^(DEVICE|ROM_NAME|RELEASE|BUILD_TYPE|OUT_DIR)=" >> $GITHUB_ENV
 
       - name: Cache files
         uses: actions/cache@v5.0.5
         with:
           path: ~/cache
-          # This creates a unique key for every single run, 
-          # but uses the previous run's cache as a starting point.
           key: cache-${{ github.run_id }}
           restore-keys: |
             cache-
-      
-      - name: Set strict mode
-        shell: bash
-        run: |
-          set -euo pipefail
 
       - name: Setup JDK 17
         uses: actions/setup-java@v3
@@ -41,118 +51,46 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install make
-        shell: bash
+      - name: Install dependencies
         run: |
-          echo "Installing make..."
+          echo "Installing make and git-lfs..."
           sudo apt-get update
           sudo apt-get install -y make git-lfs
+          
+          # Verify installations
+          command -v make &> /dev/null || { echo "make failed to install"; exit 1; }
+          command -v git-lfs &> /dev/null || { echo "git-lfs failed to install"; exit 1; }
 
-      - name: Verify Make Installation
-        shell: bash
-        run: |
-          echo "Verifying make installation..."
-          if ! command -v make &> /dev/null; then
-            echo "make is not installed. Exiting."
-            exit 1
-          fi
-          echo "make is installed successfully."
-
-      - name: Verify Git LFS Installation
-        shell: bash
-        run: |
-          echo "Verifying Git LFS installation..."
-          if ! command -v git-lfs &> /dev/null; then
-            echo "Git LFS is not installed. Exiting."
-            exit 1
-          fi
-          echo "Git LFS is installed successfully."
-
-
-      
-      
       - name: Configure Git Authentication
-        shell: bash
         run: |
           echo "Configuring Git to use GitHub token for HTTPS clones..."
-          # This tells git to transparently use the token for all github.com HTTPS requests
-          git config --global url."https://${{ secrets.GITHUB }}@github.com/".insteadOf "https://github.com/"
-      
-          # 'repo' tool requires a git identity to be set globally
+          git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-
       - name: Cleanup Git Authentication
         if: always()
-        shell: bash
         run: |
           echo "Cleaning up Git credentials from self-hosted runner..."
-          git config --global --unset url."https://${{ secrets.GITHUB }}@github.com/".insteadOf || true
+          git config --global --unset url."https://${GITHUB_TOKEN}@github.com/".insteadOf || true
 
       - name: Install repo tool
-        shell: bash
         run: |
           mkdir -p "$HOME/bin"
           echo "Installing repo tool..."
           curl -sS https://storage.googleapis.com/git-repo-downloads/repo > "$HOME/bin/repo"
           chmod +x "$HOME/bin/repo"
-      
-      - name: Add repo tool to PATH
-        shell: bash
-        run: |
-          echo "Adding repo tool to PATH..."
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - name: Verify repo tool Installation
-        shell: bash
-        run: |
-          echo "Verifying repo tool installation..."
-          if ! command -v repo &> /dev/null; then
-            echo "repo tool is not installed. Exiting."
-            exit 1
-          fi
-          echo "repo tool is installed successfully."
-
-      - name: Prepare env file
-        shell: bash
-        run: |
-          cat > .env <<'EOF'
-          TG_TOKEN="${{ secrets.TG_TOKEN }}"
-          TG_CHAT="${{ secrets.TG_CHAT }}"
-          TG_TOPIC="${{ secrets.TG_TOPIC }}"
-          UPLOAD="${{ secrets.UPLOAD }}"
-          PIXELDRAIN="${{ secrets.PIXELDRAIN }}"
-          GITHUB="${{ secrets.GITHUB }}"
-          EOF
-      
-      - name: Check if .env file exists
-        shell: bash
-        run: |
-          if [[ -f ".env" ]]; then
-            echo ".env file created successfully."
-          else
-            echo "Failed to create .env file. Exiting."
-            exit 1
-          fi
-
-      - name: Load your local secrets
-        shell: bash
-        run: |
-          echo "Loading secrets from .env file..."
-          set -o allexport
-          source .env
-          set +o allexport
-
-
       - name: Clean build environment
-        shell: bash
         run: |
           echo "Cleaning build environment..."
-          # List of folders to remove
+          # Prevent unbound variable errors if DEVICE isn't set yet
+          DEVICE_NAME="${DEVICE:-unknown_device}"
+          
           remove=(
               .repo/local_manifests
-              out/target/product/${DEVICE}
+              out/target/product/${DEVICE_NAME}
               hardware/qcom-caf/common/*
               hardware/qcom-caf/sm6225/*
               device/xiaomi/*
@@ -161,88 +99,81 @@ jobs:
               vendor/qcom/opensource/*
           )
 
-          # Efficiently remove all of them
           for folder in "${remove[@]}"; do
               rm -rf "$folder"
               echo "    Cleaned: $folder"
           done
         
       - name: Repo Init
-        shell: bash
         run: |
           echo "Initializing repo..."
           repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
 
       - name: Local Manifests
-        shell: bash
         run: |
           echo "Cloning local manifests..."
           git clone https://github.com/nuruszama/crave_build_scripts.git -b lineage-23.2 .repo/local_manifests
 
-      
       - name: Repository Sync
-        shell: bash
         run: |
           echo "Starting repo sync..."
           SYNC_START=$(date +%s)
-          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
+          
+          # Retry loop with lower concurrency to prevent HTTP 429 Rate Limits
+          until repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync -j4; do
+            echo "Repo sync failed (likely rate-limited). Retrying in 30 seconds..."
+            sleep 30
+          done
+          
           SYNC_END=$(date +%s)
           SYNC_DIFF=$((SYNC_END - SYNC_START))
-          echo "Repo sync completed in $((SYNC_DIFF / 60)) minutes and $((SYNC_DIFF % 60)) seconds."
+          echo "Repo sync completed successfully in $((SYNC_DIFF / 60)) minutes and $((SYNC_DIFF % 60)) seconds."
 
       - name: Cloning hardware/qcom-caf/common
-        shell: bash
         run: |
           echo "Cloning hardware/qcom-caf/common..."
           rm -rf hardware/qcom-caf/common
           git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
 
-      - name : Lunch device
-        shell: bash
+      - name: Lunch and Build
         run: |
           echo "Setting up environment variables..."
           source build/envsetup.sh
+          
+          # Variables pulled from GITHUB_ENV
           lunch ${ROM_NAME}_${DEVICE}-${RELEASE}-${BUILD_TYPE}
           export BUILD_USERNAME=ehfazo
           export BUILD_HOSTNAME=arch
           make installclean
-
-      - name: Bacon
-        shell: bash
-        run: |
+          
           echo "Starting build process..."
-          set -o pipefail
           mka bacon -j$(nproc --all) 2>&1 | tee build.log
-          BUILD_LOG="build.log"
 
-
-
-          if grep -q -E "ninja failed|failed to build some targets" "$BUILD_LOG"; then
+          if grep -q -E "ninja failed|failed to build some targets" build.log; then
               echo "Build failed. Check the build log for details."
               exit 1
           else
               echo "Build completed successfully."
           fi 
       
-      - name: Post-build processing
-        shell: bash
+      - name: Post-build Uploads
         run: | 
-          ROM_ZIP=$(ls -t ${OUT_DIR}/*.zip 2>/dev/null | head -n 1)
-
-          if [ -n "$ROM_ZIP" ]; then
-              BUILD_ID=$(basename "$ROM_ZIP" .zip)
-              ROM_SIZE=$(du -h "$ROM_ZIP" | awk '{print $1}')
-
-
-
-      - name: ROM
-        shell: bash
-        run: |
+          # Source config again to access custom functions like gofile_upload
+          source build_config.sh
+          
+          # If OUT_DIR isn't set by config, fallback to standard Android out path
+          TARGET_OUT="${OUT_DIR:-out/target/product/$DEVICE}"
+          ROM_ZIP=$(ls -t ${TARGET_OUT}/*.zip 2>/dev/null | head -n 1 || true)
+          
           UPLOAD_MSG=""
           IMG_MSG=""
 
-          # ROM
+          # ROM Logic (Fixed missing 'fi' statement)
           if [ -n "$ROM_ZIP" ]; then
+              BUILD_ID=$(basename "$ROM_ZIP" .zip)
+              ROM_SIZE=$(du -h "$ROM_ZIP" | awk '{print $1}')
+              
+              echo "Uploading ROM..."
               GO_URL=$(gofile_upload "$ROM_ZIP")
               PD_URL=$(pixeldrain_upload "$ROM_ZIP")
 
@@ -250,13 +181,16 @@ jobs:
           ⋄ [GoFile](${GO_URL})
           ⋄ [PixelDrain](${PD_URL})
           "
+          else
+              echo "No ROM zip found to upload."
           fi
 
           # IMAGES
           for IMG in boot.img vendor_boot.img init_boot.img super_empty.img recovery.img; do
-              FILE="${OUT_DIR}/${IMG}"
+              FILE="${TARGET_OUT}/${IMG}"
 
               if [ -f "$FILE" ]; then
+                  echo "Uploading $IMG..."
                   GO_URL=$(gofile_upload "$FILE")
 
                   IMG_MSG="${IMG_MSG}
@@ -265,9 +199,10 @@ jobs:
           done
 
           # OTA
-          OTA_JSON="${OUT_DIR}/GMS/${DEVICE}.json"
+          OTA_JSON="${TARGET_OUT}/GMS/${DEVICE}.json"
 
           if [ -f "$OTA_JSON" ]; then
+              echo "Uploading OTA JSON..."
               GO_URL=$(gofile_upload "$OTA_JSON")
 
               IMG_MSG="${IMG_MSG}
@@ -276,8 +211,7 @@ jobs:
           ⋄ [OTA JSON](${GO_URL})"
           fi
 
-          echo ${UPLOAD_MSG}
+          echo -e "$UPLOAD_MSG"
+          echo -e "$IMG_MSG"
+          echo ${GO_URL}
           echo "Done"
-
-
-
