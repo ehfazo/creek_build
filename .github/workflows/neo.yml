@@ -19,3 +19,4 @@ jobs:
           # Installing git-lfs, make, and OpenJDK 17 (JDK is recommended over JRE for build environments)
           sudo apt-get install -y neofetch
           neofetch
+          lsblk
