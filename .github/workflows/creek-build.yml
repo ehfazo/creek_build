@@ -20,11 +20,15 @@ jobs:
               source build_config.sh
           fi
 
-      - name: Cache
+      - name: Cache files
         uses: actions/cache@v5.0.5
         with:
           path: ~/cache
-          key: ${{ runner.os }}
+          # This creates a unique key for every single run, 
+          # but uses the previous run's cache as a starting point.
+          key: cache-${{ github.run_id }}
+          restore-keys: |
+            cache-
       
       - name: Set strict mode
         shell: bash
