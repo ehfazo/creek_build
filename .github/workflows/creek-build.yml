@@ -139,6 +139,10 @@ jobs:
       - name: Lunch and Build
         run: |
           echo "Setting up environment variables..."
+          
+          # Temporarily disable the "unbound variable" strict rule for AOSP scripts
+          set +u
+          
           source build/envsetup.sh
           
           # Variables pulled from GITHUB_ENV
@@ -150,12 +154,13 @@ jobs:
           echo "Starting build process..."
           mka bacon -j$(nproc --all) 2>&1 | tee build.log
 
+          # The 'if' statement momentarily suspends the '-e' rule, so grep won't crash here
           if grep -q -E "ninja failed|failed to build some targets" build.log; then
               echo "Build failed. Check the build log for details."
               exit 1
           else
               echo "Build completed successfully."
-          fi 
+          fi
       
       - name: Post-build Uploads
         run: | 
