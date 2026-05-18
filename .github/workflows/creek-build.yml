@@ -11,12 +11,9 @@ jobs:
         shell: bash --noprofile --norc -euo pipefail {0}
     
     # Map your secrets as environment variables for the whole job
-    # This is much safer than writing them to a .env file on a persistent VPS
     env:
       TG_TOKEN: ${{ secrets.TG_TOKEN }}
       TG_CHAT: ${{ secrets.TG_CHAT }}
-      TG_TOPIC: ${{ secrets.TG_TOPIC }}
-      UPLOAD: ${{ secrets.UPLOAD }}
       PIXELDRAIN: ${{ secrets.PIXELDRAIN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB }}
 
