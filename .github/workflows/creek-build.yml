@@ -8,19 +8,103 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install Dependencies (Ubuntu 24.04 Pro)
+      
+      - name: Cache
+        uses: actions/cache@v5.0.5
+      
+      - name: Set strict mode
         shell: bash
         run: |
-          echo "Updating package lists..."
+          set -euo pipefail
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Git LFS
+        uses: git-lfs/git-lfs-action@v2
+
+      - name: Install make
+        shell: bash
+        run: |
+          echo "Installing make..."
           sudo apt-get update
-          
-          echo "Installing required dependencies..."
-          # Installing git-lfs, make, and OpenJDK 17 (JDK is recommended over JRE for build environments)
-          sudo apt-get install -y git-lfs make openjdk-17-jdk
-          
-          echo "Initializing git-lfs..."
-          git lfs install
+          sudo apt-get install -y make
+
+      - name: Verify Make Installation
+        shell: bash
+        run: |
+          echo "Verifying make installation..."
+          if ! command -v make &> /dev/null; then
+            echo "make is not installed. Exiting."
+            exit 1
+          fi
+          echo "make is installed successfully."
+
+      - name: Verify Git LFS Installation
+        shell: bash
+        run: |
+          echo "Verifying Git LFS installation..."
+          if ! command -v git-lfs &> /dev/null; then
+            echo "Git LFS is not installed. Exiting."
+            exit 1
+          fi
+          echo "Git LFS is installed successfully."
+
+      - name: Env file
+        shell: bash
+        run: |
+          if [ -f "./build_config.sh" ]; then
+              source build_config.sh
+          else
+              curl -sf https://raw.githubusercontent.com/ehfazo/creek_build/main/build_config.sh -o build_config.sh
+              source build_config.sh
+          fi
+      
+      
+      - name: Configure Git Authentication
+        shell: bash
+        run: |
+          echo "Configuring Git to use GitHub token for HTTPS clones..."
+          # This tells git to transparently use the token for all github.com HTTPS requests
+          git config --global url."https://${{ secrets.GITHUB }}@github.com/".insteadOf "https://github.com/"
+      
+          # 'repo' tool requires a git identity to be set globally
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+
+      - name: Cleanup Git Authentication
+        if: always()
+        shell: bash
+        run: |
+          echo "Cleaning up Git credentials from self-hosted runner..."
+          git config --global --unset url."https://${{ secrets.GITHUB }}@github.com/".insteadOf || true
+
+      - name: Install repo tool
+        shell: bash
+        run: |
+          echo "Installing repo tool..."
+          curl -sS https://storage.googleapis.com/git-repo-downloads/repo > "$HOME/bin/repo"
+          chmod +x "$HOME/bin/repo"
+      
+      - name: Add repo tool to PATH
+        shell: bash
+        run: |
+          echo "Adding repo tool to PATH..."
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Verify repo tool Installation
+        shell: bash
+        run: |
+          echo "Verifying repo tool installation..."
+          if ! command -v repo &> /dev/null; then
+            echo "repo tool is not installed. Exiting."
+            exit 1
+          fi
+          echo "repo tool is installed successfully."
 
       - name: Prepare env file
         shell: bash
@@ -33,30 +117,120 @@ jobs:
           PIXELDRAIN="${{ secrets.PIXELDRAIN }}"
           GITHUB="${{ secrets.GITHUB }}"
           EOF
-
-      - name: Configure Git Authentication
-        shell: bash
-        run: |
-          echo "Configuring Git to use GitHub token for HTTPS clones..."
-          # This tells git to transparently use the token for all github.com HTTPS requests
-          git config --global url."https://${{ secrets.GITHUB }}@github.com/".insteadOf "https://github.com/"
       
-          # 'repo' tool requires a git identity to be set globally
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Run build
+      - name: Check if .env file exists
         shell: bash
         run: |
-          echo "$HOME/bin" >> "$GITHUB_PATH"
-          bash ./scripts/gha_preflight.sh
-          chmod +x ./run.sh
-          ./run.sh
+          if [[ -f ".env" ]]; then
+            echo ".env file created successfully."
+          else
+            echo "Failed to create .env file. Exiting."
+            exit 1
+          fi
 
-      - name: Cleanup Git Authentication
-        if: always()
+      - name: Load your local secrets
         shell: bash
         run: |
-          echo "Cleaning up Git credentials from self-hosted runner..."
-          git config --global --unset url."https://${{ secrets.GITHUB }}@github.com/".insteadOf || true
+          echo "Loading secrets from .env file..."
+          set -o allexport
+          source .env
+          set +o allexport
+
+
+      - name: Clean build environment
+        shell: bash
+        run: |
+          echo "Cleaning build environment..."
+          # List of folders to remove
+          remove=(
+              .repo/local_manifests
+              out/target/product/${DEVICE}
+              hardware/qcom-caf/common/*
+              hardware/qcom-caf/sm6225/*
+              device/xiaomi/*
+              vendor/xiaomi/*
+              vendor/lineage-priv/keys
+              vendor/qcom/opensource/*
+          )
+
+          # Efficiently remove all of them
+          for folder in "${remove[@]}"; do
+              rm -rf "$folder"
+              echo "    Cleaned: $folder"
+          done
+        
+      - name: Repo Init
+        shell: bash
+        run: |
+          echo "Initializing repo..."
+          repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
+
+      - name: Local Manifests
+        shell: bash
+        run: |
+          echo "Cloning local manifests..."
+          git clone https://github.com/nuruszama/crave_build_scripts.git -b lineage-23.2 .repo/local_manifests
+
+      
+      - name: Repository Sync
+        shell: bash
+        run: |
+          echo "Starting repo sync..."
+          SYNC_START=$(date +%s)
+          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
+          SYNC_END=$(date +%s)
+          SYNC_DIFF=$((SYNC_END - SYNC_START))
+          echo "Repo sync completed in $((SYNC_DIFF / 60)) minutes and $((SYNC_DIFF % 60)) seconds."
+
+      - name: Cloning hardware/qcom-caf/common
+        shell: bash
+        run: |
+          echo "Cloning hardware/qcom-caf/common..."
+          rm -rf hardware/qcom-caf/common
+          git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
+
+      - name: Setup environment variables
+        shell: bash
+        run: |
+          echo "Setting up environment variables..."
+          source build/envsetup.sh
+
+      - name : Lunch device
+        shell: bash
+        run: |
+          lunch ${ROM_NAME}_${DEVICE}-${RELEASE}-${BUILD_TYPE}
+          export BUILD_USERNAME=ehfazo
+          export BUILD_HOSTNAME=arch
+          make installclean
+
+      - name: Bacon
+        shell: bash
+        run: |
+          echo "Starting build process..."
+          set -o pipefail
+          mka bacon -j$(nproc --all) 2>&1 | tee build.log
+          BUILD_LOG="build.log"
+
+
+
+          if grep -q -E "ninja failed|failed to build some targets" "$BUILD_LOG"; then
+              echo "Build failed. Check the build log for details."
+              exit 1
+          else
+              echo "Build completed successfully."
+          fi 
+      
+      - name: Post-build processing
+        shell: bash
+        run: | 
+          ROM_ZIP=$(ls -t ${OUT_DIR}/*.zip 2>/dev/null | head -n 1)
+
+          if [ -n "$ROM_ZIP" ]; then
+              BUILD_ID=$(basename "$ROM_ZIP" .zip)
+              ROM_SIZE=$(du -h "$ROM_ZIP" | awk '{print $1}')
+
+
+
+
+
 
