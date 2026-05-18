@@ -30,9 +30,13 @@ jobs:
               curl -sf https://raw.githubusercontent.com/ehfazo/creek_build/main/config/build_config.sh -o build_config.sh
           fi
           
-          # Source it, then export all variables to GITHUB_ENV so future steps can use them
+          # 'set -a' automatically exports all variables defined in the sourced script
+          set -a
           source build_config.sh
-          env | grep -E "^(DEVICE|ROM_NAME|RELEASE|BUILD_TYPE|OUT_DIR)=" >> $GITHUB_ENV
+          set +a
+          
+          # Add '|| true' so grep does not crash the workflow if it fails to find a match
+          env | grep -E "^(DEVICE|ROM_NAME|RELEASE|BUILD_TYPE|OUT_DIR)=" >> $GITHUB_ENV || true
 
       - name: Cache files
         uses: actions/cache@v5.0.5
