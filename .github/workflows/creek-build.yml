@@ -89,6 +89,7 @@ jobs:
       - name: Install repo tool
         shell: bash
         run: |
+          mkdir -p "$HOME/bin"
           echo "Installing repo tool..."
           curl -sS https://storage.googleapis.com/git-repo-downloads/repo > "$HOME/bin/repo"
           chmod +x "$HOME/bin/repo"
