@@ -12,6 +12,7 @@ jobs:
       - name: Env file
         shell: bash
         run: |
+          mkdir -p ~/cache
           if [ -f "./build_config.sh" ]; then
               source build_config.sh
           else
@@ -22,6 +23,7 @@ jobs:
       - name: Cache
         uses: actions/cache@v5.0.5
         with:
+          path: ~/cache
           key: ${{ runner.os }}
       
       - name: Set strict mode
