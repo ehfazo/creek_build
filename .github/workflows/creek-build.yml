@@ -23,15 +23,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Git LFS
-        uses: git-lfs/git-lfs-action@v2
-
       - name: Install make
         shell: bash
         run: |
           echo "Installing make..."
           sudo apt-get update
-          sudo apt-get install -y make
+          sudo apt-get install -y make git-lfs
 
       - name: Verify Make Installation
         shell: bash
@@ -231,6 +228,49 @@ jobs:
 
 
 
+      - name: ROM
+        shell: bash
+        run: |
+          UPLOAD_MSG=""
+          IMG_MSG=""
+
+          # ROM
+          if [ -n "$ROM_ZIP" ]; then
+              GO_URL=$(gofile_upload "$ROM_ZIP")
+              PD_URL=$(pixeldrain_upload "$ROM_ZIP")
+
+              UPLOAD_MSG="${UPLOAD_MSG}
+          ⋄ [GoFile](${GO_URL})
+          ⋄ [PixelDrain](${PD_URL})
+          "
+          fi
+
+          # IMAGES
+          for IMG in boot.img vendor_boot.img init_boot.img super_empty.img recovery.img; do
+              FILE="${OUT_DIR}/${IMG}"
+
+              if [ -f "$FILE" ]; then
+                  GO_URL=$(gofile_upload "$FILE")
+
+                  IMG_MSG="${IMG_MSG}
+          ⋄ [${IMG}](${GO_URL})"
+              fi
+          done
+
+          # OTA
+          OTA_JSON="${OUT_DIR}/GMS/${DEVICE}.json"
+
+          if [ -f "$OTA_JSON" ]; then
+              GO_URL=$(gofile_upload "$OTA_JSON")
+
+              IMG_MSG="${IMG_MSG}
+
+          ╭─ 📜 JSON
+          ⋄ [OTA JSON](${GO_URL})"
+          fi
+
+          echo ${UPLOAD_MSG}
+          echo "Done"
 
 
 

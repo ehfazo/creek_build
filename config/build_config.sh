@@ -6,20 +6,6 @@ BUILD_FLAVOUR="vanilla"
 ANDROID_VERSION="v16 QPR2"
 PROJECT_VERSION="LOS 23.2"
 
-# ================= TIMEZONE =================
-echo "🕒 Switching system timezone to UTC"
-sudo rm -f /etc/localtime
-sudo ln -s /usr/share/zoneinfo/UTC /etc/localtime
-echo "🕒 Current system time: $(date)"
-
-# ================= JQ =================
-if ! command -v jq &> /dev/null; then
-    mkdir -p ~/bin
-    curl -L -o ~/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7/jq-linux64
-    chmod +x ~/bin/jq
-    export PATH=$HOME/bin:$PATH
-fi
-
 OUT_DIR="out/target/product/${DEVICE}"
 START_TIME=$(date +%s)
 BUILD_LOG="build.log"
