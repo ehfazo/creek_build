@@ -113,7 +113,7 @@ jobs:
       - name: Local Manifests
         run: |
           echo "Cloning local manifests..."
-          git clone https://github.com/nuruszama/crave_build_scripts.git -b lineage-23.2 .repo/local_manifests
+          git clone https://github.com/nuruszama/local_manifest.git -b lineage-23.2 .repo/local_manifests
 
       - name: Repository Sync
         run: |
