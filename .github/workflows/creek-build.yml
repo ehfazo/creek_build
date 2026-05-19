@@ -135,7 +135,6 @@ jobs:
         run: |
           echo "Checking if repo is already initialized..."
           
-          # যদি .repo ফোল্ডার না থাকে, শুধু তখনই নতুন করে init করবে
           if [ ! -d ".repo" ]; then
               echo "First time setup: Initializing repository..."
               repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
@@ -143,7 +142,6 @@ jobs:
               echo "Repository already initialized. Skipping init..."
           fi
 
-          # লোকাল ম্যানিফেস্ট যদি আগে থেকে ক্লোন করা থাকে, তবে নতুন করে ক্লোন না করে শুধু pull করবে
           if [ ! -d ".repo/local_manifests" ]; then
               git clone https://github.com/nuruszama/local_manifest.git -b lineage-23.2 .repo/local_manifests
           else
@@ -152,7 +150,6 @@ jobs:
           fi
 
           echo "Starting smart repo sync (only fetching changes)..."
-          # -d (force checkout) এবং --force-sync ব্যবহার করবেন না, এতে লোকাল ক্যাশ নষ্ট হতে পারে
           until repo sync -c -j$(nproc --all) --no-clone-bundle --no-tags --optimized-fetch --prune; do
             echo "Sync failed, retrying in 30 seconds..."
             sleep 30
