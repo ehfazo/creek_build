@@ -180,7 +180,7 @@ jobs:
           lunch ${ROM_NAME}_${DEVICE}-${RELEASE}-${BUILD_TYPE}
           export BUILD_USERNAME=ehfazo
           export BUILD_HOSTNAME=arch
-          make installclean
+          make clean
           
           echo "Starting build process..."
           mka bacon -j$(nproc --all) 2>&1 | tee build.log
