@@ -161,37 +161,30 @@ jobs:
           rm -rf hardware/qcom-caf/common
           git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
 
-      - name: Lunch and Build
+      - name: Repo Init and Smart Sync
         run: |
-          echo "Setting up environment variables..."
+          echo "Checking if repo is already initialized..."
           
-          # Temporarily disable strict rules for AOSP scripts & environment sourcing
-          set +eu
-          source build/envsetup.sh
-          lunch ${ROM_NAME}_${DEVICE}-${RELEASE}-${BUILD_TYPE}
-          set -eu  # Re-enable strict rules
-          
-          export BUILD_USERNAME=ehfazo
-          export BUILD_HOSTNAME=arch
-          make installclean
-          
-          echo "Starting build process..."
-          
-          # Temporarily disable pipefail so the tee pipe doesn't abruptly mask/abort signals
-          set +o pipefail
-          
-          # Cap the core count slightly to protect your 30GB RAM threshold from choking
-          mka bacon -j$(nproc --all --ignore=2) 2>&1 | tee build.log
-          
-          set -o pipefail # Re-enable pipefail
-          
-          # Explicitly verify the build log result
-          if grep -q -E "ninja failed|failed to build some targets|Killed" build.log; then
-              echo "Build failed. Check the build log for details."
-              exit 1
+          if [ ! -d ".repo" ]; then
+              echo "First time setup: Initializing repository..."
+              repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
           else
-              echo "Build completed successfully."
+              echo "Repository already initialized. Skipping init..."
           fi
+          
+          if [ ! -d ".repo/local_manifests" ]; then
+              git clone https://github.com/nuruszama/local_manifest.git -b lineage-23.2 .repo/local_manifests
+          else
+              echo "Local manifests exist. Updating..."
+              cd .repo/local_manifests && git pull && cd ../..
+          fi
+          
+          echo "Starting smart repo sync (only fetching changes)..."
+          
+          until repo sync -c -j$(nproc --all) --no-clone-bundle --no-tags --optimized-fetch --prune; do
+              echo "Sync failed, retrying in 30 seconds..."
+              sleep 30
+          done
       
       - name: Post-build Uploads
         run: | 
