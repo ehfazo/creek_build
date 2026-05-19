@@ -141,36 +141,6 @@ jobs:
           else
               echo "Repository already initialized. Skipping init..."
           fi
-
-          if [ ! -d ".repo/local_manifests" ]; then
-              git clone https://github.com/nuruszama/local_manifest.git -b lineage-23.2 .repo/local_manifests
-          else
-              echo "Local manifests exist. Updating..."
-              cd .repo/local_manifests && git pull && cd ../..
-          fi
-
-          echo "Starting smart repo sync (only fetching changes)..."
-          until repo sync -c -j$(nproc --all) --no-clone-bundle --no-tags --optimized-fetch --prune; do
-            echo "Sync failed, retrying in 30 seconds..."
-            sleep 30
-          fi
-
-      - name: Cloning hardware/qcom-caf/common
-        run: |
-          echo "Cloning hardware/qcom-caf/common..."
-          rm -rf hardware/qcom-caf/common
-          git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
-
-      - name: Repo Init and Smart Sync
-        run: |
-          echo "Checking if repo is already initialized..."
-          
-          if [ ! -d ".repo" ]; then
-              echo "First time setup: Initializing repository..."
-              repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
-          else
-              echo "Repository already initialized. Skipping init..."
-          fi
           
           if [ ! -d ".repo/local_manifests" ]; then
               git clone https://github.com/nuruszama/local_manifest.git -b lineage-23.2 .repo/local_manifests
