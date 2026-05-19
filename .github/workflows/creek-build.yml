@@ -140,22 +140,28 @@ jobs:
         run: |
           echo "Setting up environment variables..."
           
-          # Temporarily disable the "unbound variable" strict rule for AOSP scripts
-          set +u
-          
+          # Temporarily disable strict rules for AOSP scripts & environment sourcing
+          set +eu
           source build/envsetup.sh
-          
-          # Variables pulled from GITHUB_ENV
           lunch ${ROM_NAME}_${DEVICE}-${RELEASE}-${BUILD_TYPE}
+          set -eu  # Re-enable strict rules
+          
           export BUILD_USERNAME=ehfazo
           export BUILD_HOSTNAME=arch
           make installclean
           
           echo "Starting build process..."
-          mka bacon -j$(nproc --all) 2>&1 | tee build.log
-
-          # The 'if' statement momentarily suspends the '-e' rule, so grep won't crash here
-          if grep -q -E "ninja failed|failed to build some targets" build.log; then
+          
+          # Temporarily disable pipefail so the tee pipe doesn't abruptly mask/abort signals
+          set +o pipefail
+          
+          # Cap the core count slightly to protect your 30GB RAM threshold from choking
+          mka bacon -j$(nproc --all --ignore=2) 2>&1 | tee build.log
+          
+          set -o pipefail # Re-enable pipefail
+          
+          # Explicitly verify the build log result
+          if grep -q -E "ninja failed|failed to build some targets|Killed" build.log; then
               echo "Build failed. Check the build log for details."
               exit 1
           else
