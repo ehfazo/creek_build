@@ -36,81 +36,12 @@ tg_send "┌───────────────────┐
 
 🌏 _$(date +"%d %b %Y %I:%M %p UTC")_"
 
-
-# ================= BUILD START =================
-tg_send "┌───────────────────┐
-  📢      *Buildbot* initialized      📢
-└───────────────────┘
-
-      🧬 *${PROJECT_VERSION}*     🧩 *${DEVICE}*
-
- *Android Version:  ${ANDROID_VERSION}*
- *Build Type:  ${BUILD_TYPE}*
- *Release:  ${RELEASE}
- *Flavor:  ${BUILD_FLAVOUR}*
-
-🌏 _$(date +"%d %b %Y %I:%M %p GST")_"
-
 # ================= BUILD =================
 echo ">>>> [STEP] Clean"
 # List the specific folders that cause issues for creek
 remove=(
     .repo/local_manifests
     out/target/product/${DEVICE}
-    hardware/qcom-caf/common/*
-    hardware/qcom-caf/sm6225/*
-    device/xiaomi/*
-    vendor/xiaomi/*
-    vendor/lineage-priv/keys
-    vendor/qcom/opensource/*
-)
-
-# Efficiently remove all of them
-for folder in "${remove[@]}"; do
-    rm -rf "$folder"
-    echo "    Cleaned: $folder"
-done
-
-echo ">>>> [STEP] Repo Init"
-repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
-
-echo ">>>> [STEP] Local Manifests"
-git clone https://github.com/nuruszama/crave_build_scripts.git -b lineage-23.2 .repo/local_manifests
-
-echo ">>>> [STEP] Repo Sync"
-SYNC_START=$(date +%s)
-repo sync -c --force-sync --no-tags --no-clone-bundle -j$(nproc --all)
-
-echo ">>>> [STEP] Cloning hardware/qcom-caf/common"
-rm -rf hardware/qcom-caf/common
-git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
-
-SYNC_END=$(date +%s)
-SYNC_DIFF=$((SYNC_END - SYNC_START))
-
-if [ $SYNC_DIFF -ge 3600 ]; then
-    SYNC_TIME="$((SYNC_DIFF/3600))h $(((SYNC_DIFF%3600)/60))min"
-else
-    SYNC_TIME="$((SYNC_DIFF/60)) min"
-fi
-  
-echo ">>>> [STEP] Set up build environment"
-source build/envsetup.sh
-
-echo ">>>> [STEP] Lunch"
-lunch ${ROM_NAME}_${DEVICE}-${RELEASE}-${BUILD_TYPE}
-export BUILD_USERNAME=nuruszama
-export BUILD_HOSTNAME=arch
-make installclean
-
-tg_send "🔄 _Synchronization took ${SYNC_TIME}_
-🔥 Baconing for *${DEVICE}*"
-
-# ================= BUILD =================
-echo ">>>> [STEP] Clean"
-# List the specific folders that cause issues for creek
-remove=(
-    .repo/local_manifests
     hardware/qcom-caf/common
     hardware/qcom-caf/sm6225/*
     device/xiaomi/*
@@ -129,7 +60,7 @@ echo ">>>> [STEP] Repo Init"
 repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
 
 echo ">>>> [STEP] Local Manifests"
-git clone https://github.com/nuruszama/crave_build_scripts.git -b lineage-23.2 .repo/local_manifests
+git clone https://github.com/nuruszama/local_manifest.git -b lineage-23.2 .repo/local_manifests
 
 echo ">>>> [STEP] Repo Sync"
 SYNC_START=$(date +%s)
@@ -140,6 +71,7 @@ else
     repo sync -c --force-sync --no-tags --no-clone-bundle -j$(nproc --all)
 fi
 
+echo ">>>> [STEP] Cloning hardware/qcom-caf/common"
 rm -rf hardware/qcom-caf/common
 git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
 
