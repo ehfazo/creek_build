@@ -151,8 +151,12 @@ jobs:
               cd .repo/local_manifests && git pull && cd ../..
           fi
           
+          echo "Cleaning known problematic or overridden directories before sync..."
+          rm -rf hardware/qcom-caf/common
+          
           echo "Starting smart repo sync (only fetching changes)..."
-          until repo sync -c -j$(nproc --all) --no-clone-bundle --no-tags --optimized-fetch --prune; do
+          # Added --force-sync to automatically recover from broken git trees
+          until repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune; do
               echo "Sync failed, retrying in 30 seconds..."
               sleep 30
           done
