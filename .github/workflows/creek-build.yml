@@ -38,13 +38,13 @@ jobs:
           # Add '|| true' so grep does not crash the workflow if it fails to find a match
           env | grep -E "^(DEVICE|ROM_NAME|RELEASE|BUILD_TYPE|OUT_DIR)=" >> $GITHUB_ENV || true
 
-      - name: Cache files
-        uses: actions/cache@v5.0.5
-        with:
-          path: ~/cache
-          key: cache-${{ github.run_id }}
-          restore-keys: |
-            cache-
+      # - name: Cache files
+      #   uses: actions/cache@v5.0.5
+      #   with:
+      #     path: ~/cache
+      #     key: cache-${{ github.run_id }}
+      #     restore-keys: |
+      #       cache-
 
       - name: Setup JDK 17
         uses: actions/setup-java@v3
@@ -83,52 +83,80 @@ jobs:
           chmod +x "$HOME/bin/repo"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - name: Clean build environment
-        run: |
-          echo "Cleaning build environment..."
-          # Prevent unbound variable errors if DEVICE isn't set yet
-          DEVICE_NAME="${DEVICE:-unknown_device}"
+      # - name: Clean build environment
+      #   run: |
+      #     echo "Cleaning build environment..."
+      #     # Prevent unbound variable errors if DEVICE isn't set yet
+      #     DEVICE_NAME="${DEVICE:-unknown_device}"
           
-          remove=(
-              .repo/local_manifests
-              out/target/product/${DEVICE_NAME}
-              hardware/qcom-caf/common/*
-              hardware/qcom-caf/sm6225/*
-              device/xiaomi/*
-              vendor/xiaomi/*
-              vendor/lineage-priv/keys
-              vendor/qcom/opensource/*
-          )
+      #     remove=(
+      #         .repo/local_manifests
+      #         out/target/product/${DEVICE_NAME}
+      #         hardware/qcom-caf/common/*
+      #         hardware/qcom-caf/sm6225/*
+      #         device/xiaomi/*
+      #         vendor/xiaomi/*
+      #         vendor/lineage-priv/keys
+      #         vendor/qcom/opensource/*
+      #     )
 
-          for folder in "${remove[@]}"; do
-              rm -rf "$folder"
-              echo "    Cleaned: $folder"
-          done
+      #     for folder in "${remove[@]}"; do
+      #         rm -rf "$folder"
+      #         echo "    Cleaned: $folder"
+      #     done
         
-      - name: Repo Init
-        run: |
-          echo "Initializing repo..."
-          repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
+      # - name: Repo Init
+      #   run: |
+      #     echo "Initializing repo..."
+      #     repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
 
-      - name: Local Manifests
-        run: |
-          echo "Cloning local manifests..."
-          git clone https://github.com/nuruszama/local_manifest.git -b lineage-23.2 .repo/local_manifests
+      # - name: Local Manifests
+      #   run: |
+      #     echo "Cloning local manifests..."
+      #     git clone https://github.com/nuruszama/local_manifest.git -b lineage-23.2 .repo/local_manifests
 
-      - name: Repository Sync
-        run: |
-          echo "Starting repo sync..."
-          SYNC_START=$(date +%s)
+      # - name: Repository Sync
+      #   run: |
+      #     echo "Starting repo sync..."
+      #     SYNC_START=$(date +%s)
           
-          # Retry loop with lower concurrency to prevent HTTP 429 Rate Limits
-          until repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync -j4; do
-            echo "Repo sync failed (likely rate-limited). Retrying in 30 seconds..."
+      #     # Retry loop with lower concurrency to prevent HTTP 429 Rate Limits
+      #     until repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync -j4; do
+      #       echo "Repo sync failed (likely rate-limited). Retrying in 30 seconds..."
+      #       sleep 30
+      #     done
+          
+      #     SYNC_END=$(date +%s)
+      #     SYNC_DIFF=$((SYNC_END - SYNC_START))
+      #     echo "Repo sync completed successfully in $((SYNC_DIFF / 60)) minutes and $((SYNC_DIFF % 60)) seconds."
+      
+      
+      - name: Repo Init and Smart Sync
+        run: |
+          echo "Checking if repo is already initialized..."
+          
+          # যদি .repo ফোল্ডার না থাকে, শুধু তখনই নতুন করে init করবে
+          if [ ! -d ".repo" ]; then
+              echo "First time setup: Initializing repository..."
+              repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
+          else
+              echo "Repository already initialized. Skipping init..."
+          fi
+
+          # লোকাল ম্যানিফেস্ট যদি আগে থেকে ক্লোন করা থাকে, তবে নতুন করে ক্লোন না করে শুধু pull করবে
+          if [ ! -d ".repo/local_manifests" ]; then
+              git clone https://github.com/nuruszama/local_manifest.git -b lineage-23.2 .repo/local_manifests
+          else
+              echo "Local manifests exist. Updating..."
+              cd .repo/local_manifests && git pull && cd ../..
+          fi
+
+          echo "Starting smart repo sync (only fetching changes)..."
+          # -d (force checkout) এবং --force-sync ব্যবহার করবেন না, এতে লোকাল ক্যাশ নষ্ট হতে পারে
+          until repo sync -c -j$(nproc --all) --no-clone-bundle --no-tags --optimized-fetch --prune; do
+            echo "Sync failed, retrying in 30 seconds..."
             sleep 30
-          done
-          
-          SYNC_END=$(date +%s)
-          SYNC_DIFF=$((SYNC_END - SYNC_START))
-          echo "Repo sync completed successfully in $((SYNC_DIFF / 60)) minutes and $((SYNC_DIFF % 60)) seconds."
+          fi
 
       - name: Cloning hardware/qcom-caf/common
         run: |
