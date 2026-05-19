@@ -150,11 +150,42 @@ jobs:
           fi
           
           echo "Starting smart repo sync (only fetching changes)..."
-          
           until repo sync -c -j$(nproc --all) --no-clone-bundle --no-tags --optimized-fetch --prune; do
               echo "Sync failed, retrying in 30 seconds..."
               sleep 30
           done
+
+      - name: Cloning hardware/qcom-caf/common
+        run: |
+          echo "Cloning hardware/qcom-caf/common..."
+          rm -rf hardware/qcom-caf/common
+          git clone https://github.com/sapphire-sm6225/android_hardware_qcom-caf_common.git -b lineage-23.2 hardware/qcom-caf/common
+
+      - name: Lunch and Build
+        run: |
+          echo "Setting up environment variables..."
+          
+          # Temporarily disable the "unbound variable" strict rule for AOSP scripts
+          set +u
+          
+          source build/envsetup.sh
+          
+          # Variables pulled from GITHUB_ENV
+          lunch ${ROM_NAME}_${DEVICE}-${RELEASE}-${BUILD_TYPE}
+          export BUILD_USERNAME=ehfazo
+          export BUILD_HOSTNAME=arch
+          make installclean
+          
+          echo "Starting build process..."
+          mka bacon -j$(nproc --all) 2>&1 | tee build.log
+
+          # The 'if' statement momentarily suspends the '-e' rule, so grep won't crash here
+          if grep -q -E "ninja failed|failed to build some targets" build.log; then
+              echo "Build failed. Check the build log for details."
+              exit 1
+          else
+              echo "Build completed successfully."
+          fi
       
       - name: Post-build Uploads
         run: | 
