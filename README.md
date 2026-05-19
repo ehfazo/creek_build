@@ -1,4 +1,5 @@
 # Crave Custom ROM Build Scripts 🚀
+# Self Hosted (GitHub Actions) Custom ROM Build Scripts
 Instruction is still under maintenance.. will be updated soon.
 
 This repository contains highly automated build scripts optimized for building custom Android ROMs (specifically LineageOS) using the **Crave.io** build environment. 
