@@ -252,3 +252,8 @@ jobs:
           echo -e "$IMG_MSG"
           echo ${GO_URL}
           echo "Done"
+      
+      - name: Upload using Custom Action
+        uses: ./.github/actions/gofile-upload
+        with:
+            filepath: $ROM_ZIP
