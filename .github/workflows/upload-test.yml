@@ -7,29 +7,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3 
 
-      - name: Setup Go File and PixelDrain (not for now) functions
-        run: |
-          
-          # Download config if missing
-          if [ ! -f "./gofile_upload.sh" ]; then
-              curl -sf https://raw.githubusercontent.com/ehfazo/creek_build/debug/config/gofile_upload.sh -o gofile_upload.sh
-          fi
+      - name: Create Test File
+        run: echo "This is a test file for upload." > testfile.txt
+        shell: bash        
 
-      - name: Test GoFile Upload
-        run: |
-            # 1. LOAD THE FUNCTION INTO THIS SHELL
-            source gofile_upload.sh
-            
-            # 2. Create a test file
-            echo "This is a test file for GoFile upload." > testfile.txt
-            
-            # 3. Call the GoFile upload function
-            gofile_upload testfile.txt
-            
-            # 4. Check if the GOFILE_URL variable is set and print it
-            if [ -z "$GOFILE_URL" ]; then
-            echo "GoFile upload failed: GOFILE_URL is not set."
-            exit 1
-            else
-            echo "GoFile upload successful: $GOFILE_URL"
-            fi
+      - name: Upload using Custom Action
+        uses: ./.github/actions/gofile-upload
+        with:
+            filepath: 'testfile.txt'

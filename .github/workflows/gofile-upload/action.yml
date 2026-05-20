@@ -1,0 +1,14 @@
+name: "Upload to GoFile"
+description: "Uploads a file to GoFile"
+inputs:
+  filepath:
+    description: "Path to the file"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        # Download or run your bash script here
+        source config/gofile_upload.sh
+        gofile_upload ${{ inputs.filepath }}
+      shell: bash
