@@ -1,4 +1,4 @@
-name: Creek Build (Self-Hosted)
+name: Creek Build (GitHub)
 on: workflow_dispatch
 
 jobs:
