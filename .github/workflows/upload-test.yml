@@ -1,0 +1,33 @@
+name: Upload test (PixelDrain and GoFile)
+on: workflow_dispatch
+jobs:
+  upload-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3 
+
+      - name: Setup Go File and PixelDrain (not for now) functions
+        run: |
+          
+          # Download config if missing
+          if [ ! -f "./gofile_upload.sh" ]; then
+              curl -sf https://raw.githubusercontent.com/ehfazo/creek_build/debug/config/gofile_upload.sh -o gofile_upload.sh
+          fi
+          source gofile_upload.sh
+
+      - name: Test GoFile Upload
+        run: |
+          # Create a test file
+          echo "This is a test file for GoFile upload." > testfile.txt
+          
+          # Call the GoFile upload function (assuming it sets GOFILE_URL)
+          gofile_upload testfile.txt
+          
+          # Check if the GOFILE_URL variable is set and print it
+          if [ -z "$GOFILE_URL" ]; then
+            echo "GoFile upload failed: GOFILE_URL is not set."
+            exit 1
+          else
+            echo "GoFile upload successful: $GOFILE_URL"
+          fi
