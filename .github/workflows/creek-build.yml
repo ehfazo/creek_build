@@ -167,6 +167,16 @@ jobs:
         run: |
           echo "Setting up environment variables..."
           
+          # Create stub kernel source for generated_kernel_includes
+          mkdir -p kernel/xiaomi/creek
+          cat > kernel/xiaomi/creek/Makefile << 'EOF'
+VERSION = 5
+PATCHLEVEL = 15
+
+headers_install:
+	$(MAKE) -C ../../device/xiaomi/creek-kernel/kernel-headers O=$(O) headers_install
+EOF
+          
           # Temporarily disable the "unbound variable" strict rule for AOSP scripts
           set +u
           
