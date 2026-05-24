@@ -1,0 +1,22 @@
+name: PixelDrain Upload Test
+on: workflow_dispatch
+jobs:
+  pixel-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create Test File
+        run: echo "PixelDrain test file content." > pixel-test.txt
+        shell: bash
+
+      - name: Upload using PixelDrain Action
+        uses: ./.github/actions/pixeldrain
+        with:
+          filepath: 'pixel-test.txt'
+          api_key: ${{ secrets.PIXELDRAIN }}
+
+      - name: Show Download URL
+        run: echo "Download at $PIXELDRAIN_URL"
+        shell: bash
