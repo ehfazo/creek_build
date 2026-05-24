@@ -1,0 +1,71 @@
+name: 'On Fail'
+description: 'Sends failure notification with log uploads via Telegram'
+inputs:
+  tg_token:
+    description: 'Telegram bot token'
+    required: true
+  tg_chat:
+    description: 'Telegram chat ID'
+    required: true
+  error_log:
+    description: 'Path to error log file'
+    required: false
+    default: ''
+  build_log:
+    description: 'Path to build log file'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        MSG="💥 *Bacon burned*
+📜 Uploading logs…"
+        curl -s -X POST "https://api.telegram.org/bot${{ inputs.tg_token }}/sendMessage" \
+          --data-urlencode "chat_id=${{ inputs.tg_chat }}" \
+          --data-urlencode "parse_mode=Markdown" \
+          --data-urlencode "disable_web_page_preview=true" \
+          --data-urlencode "text=$MSG" >/dev/null
+
+        LOG_MSG="╭─ 📜 LOGS"
+
+        # Upload error log if it exists
+        ERROR_LOG_PATH="${{ inputs.error_log }}"
+        if [ -n "$ERROR_LOG_PATH" ] && [ -f "$ERROR_LOG_PATH" ]; then
+          echo "Uploading error log..."
+          mapfile -t SERVERS < <(curl -s https://api.gofile.io/servers | jq -r '.data.servers[].name')
+          for S in $(printf "%s\n" "${SERVERS[@]}" | shuf); do
+            RESP=$(curl -s -F "file=@${ERROR_LOG_PATH}" "https://${S}.gofile.io/uploadFile")
+            URL=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
+            if [ -n "$URL" ]; then
+              echo "ERROR_LOG_URL=$URL" >> $GITHUB_ENV
+              LOG_MSG="${LOG_MSG}
+⋄ [Error Log](${URL})"
+              break
+            fi
+          done
+        fi
+
+        # Upload build log if it exists
+        BUILD_LOG_PATH="${{ inputs.build_log }}"
+        if [ -n "$BUILD_LOG_PATH" ] && [ -f "$BUILD_LOG_PATH" ]; then
+          echo "Uploading build log..."
+          mapfile -t SERVERS < <(curl -s https://api.gofile.io/servers | jq -r '.data.servers[].name')
+          for S in $(printf "%s\n" "${SERVERS[@]}" | shuf); do
+            RESP=$(curl -s -F "file=@${BUILD_LOG_PATH}" "https://${S}.gofile.io/uploadFile")
+            URL=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
+            if [ -n "$URL" ]; then
+              echo "BUILD_LOG_URL=$URL" >> $GITHUB_ENV
+              LOG_MSG="${LOG_MSG}
+⋄ [Build Log](${URL})"
+              break
+            fi
+          done
+        fi
+
+        curl -s -X POST "https://api.telegram.org/bot${{ inputs.tg_token }}/sendMessage" \
+          --data-urlencode "chat_id=${{ inputs.tg_chat }}" \
+          --data-urlencode "parse_mode=Markdown" \
+          --data-urlencode "disable_web_page_preview=true" \
+          --data-urlencode "text=${LOG_MSG}" >/dev/null
