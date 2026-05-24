@@ -20,8 +20,8 @@ runs:
   steps:
     - shell: bash
       run: |
-        MSG="💥 *Bacon burned*
-        📜 Uploading logs…"
+        MSG="💥 *Bacon burned*"
+        MSG="$MSG"$'\n'"📜 Uploading logs…"
         curl -s -X POST "https://api.telegram.org/bot${{ inputs.tg_token }}/sendMessage" \
           --data-urlencode "chat_id=${{ inputs.tg_chat }}" \
           --data-urlencode "parse_mode=Markdown" \
@@ -30,7 +30,6 @@ runs:
 
         LOG_MSG="╭─ 📜 LOGS"
 
-        # Upload error log if it exists
         ERROR_LOG_PATH="${{ inputs.error_log }}"
         if [ -n "$ERROR_LOG_PATH" ] && [ -f "$ERROR_LOG_PATH" ]; then
           echo "Uploading error log..."
@@ -40,14 +39,12 @@ runs:
             URL=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
             if [ -n "$URL" ]; then
               echo "ERROR_LOG_URL=$URL" >> $GITHUB_ENV
-              LOG_MSG="${LOG_MSG}
-⋄ [Error Log](${URL})"
+              LOG_MSG="$LOG_MSG"$'\n'"⋄ [Error Log](${URL})"
               break
             fi
           done
         fi
 
-        # Upload build log if it exists
         BUILD_LOG_PATH="${{ inputs.build_log }}"
         if [ -n "$BUILD_LOG_PATH" ] && [ -f "$BUILD_LOG_PATH" ]; then
           echo "Uploading build log..."
@@ -57,8 +54,7 @@ runs:
             URL=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
             if [ -n "$URL" ]; then
               echo "BUILD_LOG_URL=$URL" >> $GITHUB_ENV
-              LOG_MSG="${LOG_MSG}
-⋄ [Build Log](${URL})"
+              LOG_MSG="$LOG_MSG"$'\n'"⋄ [Build Log](${URL})"
               break
             fi
           done
