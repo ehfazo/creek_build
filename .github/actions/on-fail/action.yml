@@ -21,7 +21,7 @@ runs:
     - shell: bash
       run: |
         MSG="💥 *Bacon burned*
-📜 Uploading logs…"
+        📜 Uploading logs…"
         curl -s -X POST "https://api.telegram.org/bot${{ inputs.tg_token }}/sendMessage" \
           --data-urlencode "chat_id=${{ inputs.tg_chat }}" \
           --data-urlencode "parse_mode=Markdown" \
