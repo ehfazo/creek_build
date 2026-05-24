@@ -1,0 +1,50 @@
+name: Full Action Test
+on: workflow_dispatch
+jobs:
+  test-all:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create Test Files
+        run: |
+          echo "PixelDrain test file content." > pixel-test.txt
+          echo "GoFile test file content." > gofile-test.txt
+          mkdir -p out
+          echo "Error log content" > out/error.log
+          echo "Build log content" > build.log
+        shell: bash
+
+      - name: Test GoFile Upload
+        uses: ./.github/actions/gofile-upload
+        with:
+          filepath: 'gofile-test.txt'
+
+      - name: Test PixelDrain Upload
+        uses: ./.github/actions/pixeldrain
+        with:
+          filepath: 'pixel-test.txt'
+          api_key: ${{ secrets.PIXELDRAIN }}
+
+      - name: Test tg-send
+        uses: ./.github/actions/tg-send
+        with:
+          message: '🧪 *Test passed:* GoFile + PixelDrain upload actions work correctly'
+          tg_token: ${{ secrets.TG_TOKEN }}
+          tg_chat: ${{ secrets.TG_CHAT }}
+
+      - name: Test tg-upload
+        uses: ./.github/actions/tg-upload
+        with:
+          message: "📎 *Download links*\n⋄ [GoFile](${{ env.DOWNLOAD_URL }})\n⋄ [PixelDrain](${{ env.PIXELDRAIN_URL }})"
+          tg_token: ${{ secrets.TG_TOKEN }}
+          tg_chat: ${{ secrets.TG_CHAT }}
+
+      - name: Test on-fail
+        uses: ./.github/actions/on-fail
+        with:
+          tg_token: ${{ secrets.TG_TOKEN }}
+          tg_chat: ${{ secrets.TG_CHAT }}
+          error_log: 'out/error.log'
+          build_log: 'build.log'
